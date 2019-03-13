@@ -1,0 +1,35 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZFontConverter", "ZFontConverter\ZFontConverter.csproj", "{AE6941EB-BBFA-4767-AE7C-59011166E562}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{18201015-2EA5-495F-BF32-3B94B097FA3E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AE6941EB-BBFA-4767-AE7C-59011166E562}.Debug|x86.ActiveCfg = Debug|x86
+		{AE6941EB-BBFA-4767-AE7C-59011166E562}.Debug|x86.Build.0 = Debug|x86
+		{AE6941EB-BBFA-4767-AE7C-59011166E562}.Release|x86.ActiveCfg = Release|x86
+		{AE6941EB-BBFA-4767-AE7C-59011166E562}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		Policies = $0
+		$0.DotNetNamingPolicy = $1
+		$1.DirectoryNamespaceAssociation = PrefixedHierarchical
+		$0.TextStylePolicy = $2
+		$2.inheritsSet = null
+		$2.scope = text/x-csharp
+		$0.CSharpFormattingPolicy = $3
+		$3.scope = text/x-csharp
+		$0.TextStylePolicy = $4
+		$4.FileWidth = 80
+		$4.TabsToSpaces = True
+		$4.NoTabsAfterNonTabs = True
+		$4.scope = text/plain
+		$0.StandardHeader = $5
+	EndGlobalSection
+EndGlobal
