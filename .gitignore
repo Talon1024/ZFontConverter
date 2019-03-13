@@ -3,3 +3,4 @@
 *.pdb
 ZFontConverter/bin/
 ZFontConverter/obj/
+*.csproj.user

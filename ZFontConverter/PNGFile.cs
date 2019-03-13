@@ -77,7 +77,13 @@ namespace ZFontConverter
         // private FileStream fileStream;
         private BinaryReader binaryReader;
         // private BinaryWriter binaryWriter;
-        private LinkedListNode<PNGChunk> ihdrChunk;
+        private LinkedListNode<PNGChunk> ihdrChunkNode;
+        private LinkedListNode<PNGChunk> grabChunkNode;
+
+        public PNGFile()
+        {
+            chunks = new LinkedList<PNGChunk>();
+        }
 
         public PNGFile(FileStream file)
         {
@@ -96,12 +102,22 @@ namespace ZFontConverter
             return BitConverter.ToUInt32(bytes, 0);
         }
 
-        private void WriteBigEndian()
+        private void WriteBigEndian(Stream stream, uint number)
         {
-        
+            byte[] numBigEndian = BitConverter.GetBytes(number);
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(numBigEndian);
+            }
+            stream.Write(numBigEndian, 0, 4);
         }
 
-        public void Read()
+        public void Open(FileStream file)
+        {
+            binaryReader = new BinaryReader(file);
+        }
+
+        public bool Read()
         {
             byte[] header = binaryReader.ReadBytes(8);
             int comparison = 0;
@@ -111,10 +127,9 @@ namespace ZFontConverter
             }
             if (comparison > 0)
             {
-                return;
+                return false;
             }
             while (binaryReader.BaseStream.Position < binaryReader.BaseStream.Length) {
-                long offset = binaryReader.BaseStream.Position;
                 uint length = ReadBigEndian();
                 string type = Encoding.ASCII.GetString(binaryReader.ReadBytes(4));
                 byte[] data;
@@ -131,9 +146,10 @@ namespace ZFontConverter
                 chunks.AddLast(chunk);
                 if (type == "IHDR")
                 {
-                    ihdrChunk = chunks.Last;
+                    ihdrChunkNode = chunks.Last;
                 }
             }
+            return true;
         }
 
         public void InsertGrabChunk(int xOffset, int yOffset)
@@ -150,12 +166,51 @@ namespace ZFontConverter
             byte[] grabY = BitConverter.GetBytes(yOffset);
             if (BitConverter.IsLittleEndian)
             {
-                Array.Reverse(grabX);
+                Array.Reverse(grabY);
             }
-            Array.Copy(grabX, 0, grabData, 4, 4);
+            Array.Copy(grabY, 0, grabData, 4, 4);
             uint crc = CRCCalculator.CalculateCRC(grabType, grabData);
             PNGChunk grabChunk = new PNGChunk((uint)grabData.Length, grabType, crc, grabData);
-            chunks.AddAfter(ihdrChunk, grabChunk);
+            if (grabChunkNode == null)
+            {
+                grabChunkNode = chunks.AddAfter(ihdrChunkNode, grabChunk);
+            }
+            else
+            {
+                grabChunkNode.Value = grabChunk;
+            }
+        }
+
+        private void WriteChunk(Stream stream, PNGChunk chunk)
+        {
+            WriteBigEndian(stream, chunk.Length);
+            byte[] typeBytes = Encoding.ASCII.GetBytes(chunk.Type);
+            stream.Write(typeBytes, 0, 4);
+            if (chunk.Length > 0)
+            {
+                stream.Write(chunk.Data, 0, (int)chunk.Length);
+            }
+            WriteBigEndian(stream, chunk.CRC);
+        }
+
+        public bool Write(string fname)
+        {
+            try
+            {
+                FileStream writeStream = File.Open(fname, FileMode.OpenOrCreate, FileAccess.Write);
+                writeStream.Write(PNGHead, 0, PNGHead.Length);
+                foreach (var chunk in chunks)
+                {
+                    WriteChunk(writeStream, chunk);
+                }
+                writeStream.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Cannot write {fname} for some reason: {ex}");
+                return false;
+            }
+            return true;
         }
     }
 }
