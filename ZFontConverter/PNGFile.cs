@@ -23,29 +23,23 @@ namespace ZFontConverter
     }
     public static class CRCCalculator
     {
-        private static readonly uint crcConst = 0xedb88320;
         private static readonly uint initialCRC = 0xffffffff;
-        private static uint[] _CRCTable;
+        private static readonly uint[] CRCTable;
 
-        private static uint[] CRCTable
+        static CRCCalculator()
         {
-            get {
-                if (_CRCTable == null || _CRCTable.Length < 256)
+            const uint crcConst = 0xedb88320;
+            CRCTable = new uint[256];
+            for (int i = 0; i < 256; i++)
+            {
+                uint crcValue = (uint)i;
+                for (int k = 0; k < 8; k++)
                 {
-                    _CRCTable = new uint[256];
-                    for (int i = 0; i < 256; i++)
-                    {
-                        uint crcValue = (uint)i;
-                        for (int k = 0; k < 8; k++)
-                        {
-                            crcValue = ((crcValue & 1) > 0) ? (uint)(crcConst ^ (crcValue >> 1)) : crcValue >> 1;
-                        }
-                        _CRCTable[i] = crcValue;
-                    }
+                    crcValue = ((crcValue & 1) > 0) ? (uint)(crcConst ^ (crcValue >> 1)) : crcValue >> 1;
                 }
-                return _CRCTable;
+                CRCTable[i] = crcValue;
             }
-            }
+        }
 
         public static uint CalculateCRC(byte[] data)
         {
