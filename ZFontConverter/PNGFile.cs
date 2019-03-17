@@ -35,33 +35,29 @@ namespace ZFontConverter
                 uint crcValue = (uint)i;
                 for (int k = 0; k < 8; k++)
                 {
-                    crcValue = ((crcValue & 1) > 0) ? crcConst ^ (crcValue >> 1) : crcValue >> 1;
+                    crcValue = ((crcValue & 1) != 0) ? crcConst ^ (crcValue >> 1) : crcValue >> 1;
                 }
                 CRCTable[i] = crcValue;
             }
         }
 
-        public static uint CalculateCRC(byte[] data)
+        public static uint CalculateCRC(byte[] buffer)
         {
             uint CRC = initialCRC;
-            for (int i = 0; i < data.Length; i++)
+            foreach (byte theByte in buffer)
             {
-                CRC = CRCTable[(byte)(CRC ^ data[i] & 0xff)] ^ (CRC >> 8);
+                CRC = CRCTable[(byte)(CRC ^ theByte)] ^ (CRC >> 8);
             }
+            CRC ^= initialCRC;
             return CRC;
         }
         public static uint CalculateCRC(string type, byte[] data)
         {
-            uint CRC = initialCRC;
             byte[] typeAscii = Encoding.ASCII.GetBytes(type);
             byte[] concatd = new byte[data.Length + typeAscii.Length];
             Array.Copy(typeAscii, 0, concatd, 0, typeAscii.Length);
             Array.Copy(data, 0, concatd, typeAscii.Length, data.Length);
-            for (int i = 0; i < data.Length; i++)
-            {
-                CRC = CRCTable[(byte)(CRC ^ concatd[i] & 0xff)] ^ (CRC >> 8);
-            }
-            return CRC;
+            return CalculateCRC(concatd);
         }
     }
     public class PNGFile
@@ -143,12 +139,13 @@ namespace ZFontConverter
                     ihdrChunkNode = chunks.Last;
                 }
             }
+            binaryReader.Close();
             return true;
         }
 
         public void InsertGrabChunk(int xOffset, int yOffset)
         {
-            string grabType = "grAB";
+            string grabType = "grAb";
             byte[] grabTypeAscii = Encoding.ASCII.GetBytes(grabType);
             byte[] grabData = new byte[8];
             byte[] grabX = BitConverter.GetBytes(xOffset);
