@@ -18,7 +18,7 @@ namespace ZFontConverter
             this.Length = Length;
             this.Type = Type;
             this.CRC = CRC;
-            this.Data = data;
+            Data = data;
         }
     }
     public static class CRCCalculator
@@ -35,7 +35,7 @@ namespace ZFontConverter
                 uint crcValue = (uint)i;
                 for (int k = 0; k < 8; k++)
                 {
-                    crcValue = ((crcValue & 1) > 0) ? (uint)(crcConst ^ (crcValue >> 1)) : crcValue >> 1;
+                    crcValue = ((crcValue & 1) > 0) ? crcConst ^ (crcValue >> 1) : crcValue >> 1;
                 }
                 CRCTable[i] = crcValue;
             }
