@@ -33,6 +33,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
@@ -41,6 +42,14 @@
     <Compile Include="FON2Font.cs" />
     <Compile Include="ByteMapFont.cs" />
     <Compile Include="PNGFile.cs" />
+    <Compile Include="GUI\FontSelectButton.cs" />
+    <Compile Include="GUI\FileSelectButton.cs" />
+    <Compile Include="FontCharacterImage.cs" />
+    <Compile Include="GUI\MainWindow.cs" />
+    <Compile Include="FontProcessing.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="GUI\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -9,7 +9,7 @@ namespace ZFontConverter
         protected int GlobalKerning;
         public abstract bool IsFormat();
         public abstract void Read();
-        public abstract Bitmap GetBitmapFor(byte character);
+        public abstract FontCharacterImage? GetBitmapFor(byte character);
         /*
          Notes about font info:
          The file must be named font.inf

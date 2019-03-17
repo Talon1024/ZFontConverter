@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Text;
 
 namespace ZFontConverter
 {
@@ -38,7 +37,7 @@ namespace ZFontConverter
             Characters = new Dictionary<byte, ByteMapFontCharacter>(128);
         }
 
-        public override Bitmap GetBitmapFor(byte character)
+        public override FontCharacterImage? GetBitmapFor(byte character)
         {
             bool available = Characters.TryGetValue(character, out ByteMapFontCharacter fontCharacter);
             if (available && fontCharacter.Width > 0 && fontCharacter.Height > 0)
@@ -50,12 +49,9 @@ namespace ZFontConverter
                     int Row = i / fontCharacter.Width;
                     bitmap.SetPixel(Column, Row, GetColor(fontCharacter.Data[i]));
                 }
-                return bitmap;
+                return new FontCharacterImage { bitmap = bitmap, xOffset = fontCharacter.XOffset, yOffset = fontCharacter.YOffset };
             }
-            else
-            {
-                return null;
-            }
+            return null;
         }
 
         public override bool IsFormat()

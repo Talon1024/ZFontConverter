@@ -186,7 +186,7 @@ namespace ZFontConverter
             ReadAllCharData();
         }
 
-        public override Bitmap GetBitmapFor(byte character)
+        public override FontCharacterImage? GetBitmapFor(byte character)
         {
             int charIndex = character - FirstASCIIChar;
             //Console.WriteLine($"Attempting to get bitmap for {character} ({(char)character})");
@@ -204,7 +204,7 @@ namespace ZFontConverter
                     int y = i / Width;
                     bitmap.SetPixel(x, y, colour);
                 }
-                return bitmap;
+                return new FontCharacterImage(bitmap);
             }
             return null;
         }
