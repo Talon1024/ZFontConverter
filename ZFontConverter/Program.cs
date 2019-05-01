@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Drawing;
-using System.IO;
 using System.Text;
-using System.Windows.Forms;
+using ZFontConverter.GUI;
 
 namespace ZFontConverter {
     class MainClass
@@ -12,7 +10,6 @@ namespace ZFontConverter {
             bool setCodePage = false;
             if (args.Length > 0)
             {
-
                 foreach (string arg in args)
                 {
                     if (arg == "--codepage")
@@ -37,6 +34,7 @@ namespace ZFontConverter {
             }
             else
             {
+                /*
                 // Help
                 Console.Write(
                     "ZFontConverter 0.1 by Kevin Caccamo\n" +
@@ -48,21 +46,9 @@ namespace ZFontConverter {
                     "Default codepage is iso-8859-1\n" +
                     "See https://docs.microsoft.com/en-us/dotnet/api/system.text.encoding?view=netframework-4.7.2 for a list of supported encodings and their names.\n"
                 );
-                /*
-                Form mainForm = new Form();
-                GUI.FontSelectButton fontButton = new GUI.FontSelectButton
-                {
-                    Text = "Select font"
-                };
-                GUI.FileSelectButton fileButton = new GUI.FileSelectButton
-                {
-                    Text = "Select file"
-                };
-                mainForm.StartPosition = FormStartPosition.CenterScreen;
-                // mainForm.Controls.Add(fontButton);
-                mainForm.Controls.Add(fileButton);
-                mainForm.ShowDialog();
-                */               
+                */
+                MainWindow mainWindow = new MainWindow();
+                mainWindow.ShowDialog();
             }
         }
 

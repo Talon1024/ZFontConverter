@@ -27,20 +27,65 @@ namespace ZFontConverter
             }
             throw new Exception($"Format of font file {fontFileStream.Name} not supported.");
         }
+
         // Font data needs to be obtained
-        public static void ConvertFont(string fontFName)
+        public static FontFormat ReadFont(string fontFName)
         {
-            FileStream fontFileStream = File.Open(fontFName, FileMode.Open, FileAccess.Read);
-            FontFormat font = FormatOf(fontFileStream);
-            font.Read();
-            ConvertFont(fontFName, font);
+            try
+            {
+                FileStream fontFileStream = File.Open(fontFName, FileMode.Open, FileAccess.Read);
+                FontFormat font = FormatOf(fontFileStream);
+                font.Read();
+                return font;
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine($"Cannot convert {fontFName} for some reason: {e}");
+            }
+            return null;
         }
-        // Font data is already available
-        public static void ConvertFont(string fontFName, FontFormat font)
+
+        public static void ConvertFont(string fontFName, string outDir = "")
         {
+            FontFormat font = ReadFont(fontFName);
+            if (font == null) return;
+            ConvertFont(fontFName, font, outDir);
+        }
+
+        // Font data is already available
+        public static void DrawFontOn(FontFormat font, Graphics graphics, Rectangle rect)
+        {
+            if (!font.Ready) return;
+            int curXPos = 0;
+            int curYPos = 0;
+            for (byte bc = 0; bc < 255; bc++)
+            {
+                FontCharacterImage? CharImg = font.GetBitmapFor(bc);
+                if (CharImg.HasValue)
+                {
+                    Bitmap bitmap = CharImg.Value.bitmap;
+                    if (curXPos + bitmap.Width > rect.Width)
+                    {
+                        curYPos += (int)font.FontHeight;
+                        curXPos = 0;
+                    }   
+                    graphics.DrawImageUnscaled(bitmap, curXPos, curYPos + CharImg.Value.yOffset);
+                    curXPos += bitmap.Width;
+                }
+            }
+        }
+
+        public static void ConvertFont(string fontFName, FontFormat font, string outDir = "")
+        {
+            if (!font.Ready) return;
+            if (outDir == "")
+            {
+                outDir = Path.GetDirectoryName(fontFName);
+            }
+
             byte validChars = 0;
             string fontName = Path.GetFileNameWithoutExtension(fontFName);
-            string FontCharDir = $"fonts{Path.DirectorySeparatorChar}{fontName}";
+            string FontCharDir = $"{outDir}{Path.DirectorySeparatorChar}fonts{Path.DirectorySeparatorChar}{fontName}";
             for (byte bc = 0; bc < 255; bc++)
             {
                 byte[] isoChars = { bc };
@@ -51,10 +96,8 @@ namespace ZFontConverter
                 {
                     var bitmap = CharBmp.Value.bitmap;
                     Directory.CreateDirectory(FontCharDir);
-                    var handle = bitmap.GetHbitmap();
-                    Image img = Image.FromHbitmap(handle);
                     string fname = String.Format("{1}{2}{0:X4}.png", codePoint, FontCharDir, Path.DirectorySeparatorChar);
-                    img.Save(fname, System.Drawing.Imaging.ImageFormat.Png);
+                    bitmap.Save(fname, System.Drawing.Imaging.ImageFormat.Png);
                     if (CharBmp.Value.xOffset != 0 || CharBmp.Value.yOffset != 0)
                     {
                         FileStream pngFile = File.Open(fname, FileMode.Open, FileAccess.ReadWrite);
