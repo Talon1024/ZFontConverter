@@ -64,13 +64,15 @@ namespace ZFontConverter
                 if (CharImg.HasValue)
                 {
                     Bitmap bitmap = CharImg.Value.bitmap;
-                    if (curXPos + bitmap.Width > rect.Width)
+                    int nextXPos = curXPos + bitmap.Width + font.GlobalKerning;
+                    if (nextXPos > rect.Width)
                     {
                         curYPos += (int)font.FontHeight;
                         curXPos = 0;
-                    }   
+                        nextXPos = 0;
+                    }
                     graphics.DrawImageUnscaled(bitmap, curXPos, curYPos + CharImg.Value.yOffset);
-                    curXPos += bitmap.Width;
+                    curXPos = nextXPos;
                 }
             }
         }
@@ -104,7 +106,7 @@ namespace ZFontConverter
                         // Re-write PNG file with grAB chunk inserted
                         PNGFile png = new PNGFile(pngFile);
                         png.Read();
-                        png.InsertGrabChunk(CharBmp.Value.xOffset, CharBmp.Value.yOffset);
+                        png.InsertGrabChunk(CharBmp.Value.xOffset, -CharBmp.Value.yOffset);
                         png.Write(fname);
                     }
                     validChars += 1;
