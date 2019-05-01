@@ -106,7 +106,7 @@ namespace ZFontConverter
                         // Re-write PNG file with grAB chunk inserted
                         PNGFile png = new PNGFile(pngFile);
                         png.Read();
-                        png.InsertGrabChunk(CharBmp.Value.xOffset, -CharBmp.Value.yOffset);
+                        png.InsertGrabChunk(-CharBmp.Value.xOffset, -CharBmp.Value.yOffset);
                         png.Write(fname);
                     }
                     validChars += 1;

@@ -49,7 +49,11 @@ namespace ZFontConverter
                     int Row = i / fontCharacter.Width;
                     bitmap.SetPixel(Column, Row, GetColor(fontCharacter.Data[i]));
                 }
-                return new FontCharacterImage { bitmap = bitmap, xOffset = fontCharacter.XOffset, yOffset = fontCharacter.YOffset };
+                return new FontCharacterImage {
+                    bitmap = bitmap,
+                    xOffset = fontCharacter.XOffset,
+                    yOffset = fontCharacter.YOffset
+                };
             }
             return null;
         }
@@ -103,9 +107,9 @@ namespace ZFontConverter
             for (int i = 1; i < PaletteSize; i++)
             {
                 // 6-bit RGB
-                byte r = DecompressComponent(binaryReader.ReadByte());
-                byte g = DecompressComponent(binaryReader.ReadByte());
-                byte b = DecompressComponent(binaryReader.ReadByte());
+                byte r = VgaToRgb(binaryReader.ReadByte());
+                byte g = VgaToRgb(binaryReader.ReadByte());
+                byte b = VgaToRgb(binaryReader.ReadByte());
                 Palette[i] = Color.FromArgb(r, g, b);
             }
             byte InfoLength = binaryReader.ReadByte(); // Contrary to what ZDoom Wiki says, this is NOT the list of ASCII characters in the font, but rather a comment
@@ -114,9 +118,9 @@ namespace ZFontConverter
             HeaderSize = binaryReader.BaseStream.Position;
         }
 
-        private byte DecompressComponent(byte compressed)
+        private byte VgaToRgb(byte compressed)
         {
-            return (byte)(compressed << 2 | compressed >> 4);
+            return (byte)(compressed * 255 / 63);
         }
 
         private void ReadAllCharacters()
@@ -126,20 +130,22 @@ namespace ZFontConverter
                 ByteMapFontCharacter curCharacter;
                 curCharacter.ASCIICharacter = binaryReader.ReadByte();
                 curCharacter.Width = binaryReader.ReadByte();
-                if (curCharacter.ASCIICharacter == 32) // Space
-                {
-                    SpaceWidth = curCharacter.Width;
-                }
-                else if (curCharacter.ASCIICharacter == 78 && SpaceWidth == 0) // Capital N
-                {
-                    SpaceWidth = curCharacter.Width;
-                }
                 curCharacter.Height = binaryReader.ReadByte();
                 curCharacter.XOffset = binaryReader.ReadSByte();
                 curCharacter.YOffset = binaryReader.ReadSByte();
                 curCharacter.Shift = binaryReader.ReadByte();
                 int Size = curCharacter.Width * curCharacter.Height;
                 curCharacter.Data = binaryReader.ReadBytes(Size);
+
+                if (curCharacter.ASCIICharacter == 32) // Space
+                {
+                    SpaceWidth = curCharacter.Shift;
+                }
+                else if (curCharacter.ASCIICharacter == 78 && SpaceWidth == 0) // Capital N
+                {
+                    SpaceWidth = curCharacter.Shift;
+                }
+
                 if (Characters.ContainsKey(curCharacter.ASCIICharacter))
                 {
                     Characters.Remove(curCharacter.ASCIICharacter);
