@@ -5,19 +5,34 @@ namespace ZFontConverter.GUI
     // Button used to select BMF/FON2 file
     public class FileSelectButton : Button
     {
-        protected override void OnClick(EventArgs e)
+        public string SelectedFontFile { get; private set; }
+        public event EventHandler<string> FontFileSelected;
+        OpenFileDialog fileDialog;
+
+        public FileSelectButton()
         {
-            base.OnClick(e);
-            OpenFileDialog fileDialog = new OpenFileDialog
+            fileDialog = new OpenFileDialog
             {
                 Multiselect = false,
                 Filter =
-                "Byte Map Font (*.bmf)|*.bmf|"+
-                "FON2 (*.fon2)|*.fon2|"+
-                "All files (*.*)|*.*"
+                "Byte Map Font (*.bmf)|*.bmf|" +
+                "FON2 (*.fon2)|*.fon2|" +
+                "All files (*.*)|*.*",
+                SupportMultiDottedExtensions = true,
             };
+            // SelectedFontFile = "";
+        }
+
+        protected override void OnClick(EventArgs e)
+        {
+            base.OnClick(e);
             fileDialog.ShowDialog();
-            Console.WriteLine($"Selected file {fileDialog.SafeFileName}");
+            SelectedFontFile = fileDialog.FileName;
+            if (SelectedFontFile.Length > 0)
+            {
+                FontFileSelected?.Invoke(this, SelectedFontFile);
+                Console.WriteLine($"Selected file {SelectedFontFile}");
+            }
         }
     }
 }

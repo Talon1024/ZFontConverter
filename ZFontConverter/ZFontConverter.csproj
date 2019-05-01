@@ -42,7 +42,7 @@
     <Compile Include="FON2Font.cs" />
     <Compile Include="ByteMapFont.cs" />
     <Compile Include="PNGFile.cs" />
-    <Compile Include="GUI\FontSelectButton.cs" />
+    <Compile Include="GUI\OutDirSelectButton.cs" />
     <Compile Include="GUI\FileSelectButton.cs" />
     <Compile Include="FontCharacterImage.cs" />
     <Compile Include="GUI\MainWindow.cs" />
