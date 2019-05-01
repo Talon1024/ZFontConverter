@@ -81,6 +81,8 @@ namespace ZFontConverter
                 }
                 SpaceWidth = (uint)(totalWidth * 2 / (Characters.Count * 3));
             }
+            binaryReader.Close();
+            Ready = true;
         }
 
         private void ReadHeader()

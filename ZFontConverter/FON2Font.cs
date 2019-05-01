@@ -184,6 +184,8 @@ namespace ZFontConverter
             ReadHeader();
             ReadPalette();
             ReadAllCharData();
+            Ready = true;
+            binaryReader.Close();
         }
 
         public override FontCharacterImage? GetBitmapFor(byte character)

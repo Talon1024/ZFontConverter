@@ -4,9 +4,10 @@ namespace ZFontConverter
 {
     public abstract class FontFormat
     {
-        protected uint SpaceWidth;
-        protected uint FontHeight;
-        protected int GlobalKerning;
+        public uint SpaceWidth { get; protected set; }
+        public uint FontHeight { get; protected set; }
+        public int GlobalKerning { get; protected set; }
+        public bool Ready { get; protected set; }
         public abstract bool IsFormat();
         public abstract void Read();
         public abstract FontCharacterImage? GetBitmapFor(byte character);
