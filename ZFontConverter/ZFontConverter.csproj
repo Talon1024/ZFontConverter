@@ -47,9 +47,13 @@
     <Compile Include="FontCharacterImage.cs" />
     <Compile Include="GUI\MainWindow.cs" />
     <Compile Include="FontProcessing.cs" />
+    <Compile Include="Doom\DoomWAD.cs" />
+    <Compile Include="Doom\WADFont.cs" />
+    <Compile Include="Doom\DoomPicture.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="GUI\" />
+    <Folder Include="Doom\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

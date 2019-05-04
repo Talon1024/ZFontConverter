@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+// using System.Collections.Generic;
 using ZFontConverter.GUI;
 
 namespace ZFontConverter {
@@ -10,6 +11,7 @@ namespace ZFontConverter {
             bool setCodePage = false;
             if (args.Length > 0)
             {
+                // List<string> wads = new List<string>();
                 foreach (string arg in args)
                 {
                     if (arg == "--codepage")
@@ -17,11 +19,20 @@ namespace ZFontConverter {
                         setCodePage = true;
                         continue;
                     }
-                    else if (setCodePage)
+                    if (setCodePage)
                     {
                         FontProcessing.codePage = Encoding.GetEncoding(arg);
                         continue;
                     }
+
+                    /*
+                    if (IsWad(arg))
+                    {
+                        wads.Add(arg);
+                        continue;
+                    }
+                    */
+
                     try
                     {
                         FontProcessing.ConvertFont(arg);
@@ -52,6 +63,9 @@ namespace ZFontConverter {
             }
         }
 
-
+        public static bool IsWad(string fname)
+        {
+            return fname.ToLower().EndsWith("wad", StringComparison.Ordinal);
+        }
     }
 }
