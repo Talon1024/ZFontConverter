@@ -52,7 +52,8 @@ namespace ZFontConverter
                 return new FontCharacterImage {
                     bitmap = bitmap,
                     xOffset = fontCharacter.XOffset,
-                    yOffset = fontCharacter.YOffset
+                    yOffset = fontCharacter.YOffset,
+                    xShift = fontCharacter.Shift
                 };
             }
             return null;

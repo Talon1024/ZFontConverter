@@ -64,7 +64,8 @@ namespace ZFontConverter
                 if (CharImg.HasValue)
                 {
                     Bitmap bitmap = CharImg.Value.bitmap;
-                    int nextXPos = curXPos + bitmap.Width + font.GlobalKerning;
+                    int MoveX = CharImg.Value.xShift ?? bitmap.Width;
+                    int nextXPos = curXPos + MoveX + font.GlobalKerning;
                     if (nextXPos > rect.Width)
                     {
                         curYPos += (int)font.FontHeight;
