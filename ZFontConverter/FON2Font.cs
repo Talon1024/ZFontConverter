@@ -159,7 +159,7 @@ namespace ZFontConverter
         {
             if (palIndex == 0 || palIndex >= Palette.Length) // Index 0 is transparent
             {
-                return Color.FromArgb(0, 0, 0, 0);
+                return Color.Transparent;
             }
             else
             {
@@ -193,7 +193,7 @@ namespace ZFontConverter
             int charIndex = character - FirstASCIIChar;
             //Console.WriteLine($"Attempting to get bitmap for {character} ({(char)character})");
             //Console.WriteLine($"FirstASCIIChar {FirstASCIIChar} LastASCIIChar {LastASCIIChar} charIndex {charIndex}");
-            if (charIndex < AllCharData.Length && charIndex >= 0)
+            if (charIndex < AllCharData.Length && charIndex >= 0 && CharWidths[charIndex] > 0)
             {
                 byte[] charData = AllCharData[charIndex]; // Palette references
                 ushort Width = CharWidths[charIndex];

@@ -70,7 +70,7 @@ namespace ZFontConverter
                     {
                         curYPos += (int)font.FontHeight;
                         curXPos = 0;
-                        nextXPos = 0;
+                        nextXPos = MoveX + font.GlobalKerning;
                     }
                     graphics.DrawImageUnscaled(bitmap, curXPos, curYPos + CharImg.Value.yOffset);
                     curXPos = nextXPos;

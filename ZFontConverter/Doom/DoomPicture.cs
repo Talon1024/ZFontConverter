@@ -53,7 +53,7 @@ namespace ZFontConverter.Doom
                 while (Topdelta < 255) // 255 = end of column
                 {
                     int postOffset = Topdelta;
-                    if (Topdelta < PrevTopdelta)
+                    if (Topdelta <= PrevTopdelta)
                     {
                         // Account for DeePSea tall patches
                         postOffset = PrevTopdelta + Topdelta;
