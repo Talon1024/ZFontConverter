@@ -47,7 +47,7 @@ namespace ZFontConverter.Doom
             byte[] FontDefData = FontWad.GetLumpDataFor("FONTDEFS");
         }
 
-        private Color[] GetPalette()
+        public override Color[] GetPalette()
         {
 
             byte[] playpal = FontWad.GetLumpDataFor("PLAYPAL");
@@ -92,6 +92,11 @@ namespace ZFontConverter.Doom
                 NotImage = true;
             }
             return NotImage;
+        }
+
+        public override FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
+        {
+            throw new NotImplementedException();
         }
     }
 }

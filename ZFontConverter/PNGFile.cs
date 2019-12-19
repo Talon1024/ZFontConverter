@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Drawing;
 using System.Collections.Generic;
 using System.Text;
+using System.IO.Compression;
 
 namespace ZFontConverter
 {
@@ -13,12 +15,31 @@ namespace ZFontConverter
         public uint CRC;
         public byte[] Data;
 
+        // Initialize from known data
         public PNGChunk(uint Length, string Type, uint CRC, byte[] data)
         {
             this.Length = Length;
             this.Type = Type;
             this.CRC = CRC;
             Data = data;
+        }
+
+        // Initialize from scratch
+        public PNGChunk(string Type, byte[] data)
+        {
+            Length = (uint)data.Length;
+            this.Type = Type;
+            Data = data;
+            CRC = CRCCalculator.CalculateCRC(Type, data);
+        }
+
+        // Initialize empty chunk
+        public PNGChunk(string Type)
+        {
+            Length = 0;
+            this.Type = Type;
+            Data = new byte[0];
+            CRC = CRCCalculator.CalculateCRC(Type, Data);
         }
     }
     public static class CRCCalculator
@@ -70,16 +91,19 @@ namespace ZFontConverter
         private LinkedListNode<PNGChunk> ihdrChunkNode;
         private LinkedListNode<PNGChunk> grabChunkNode;
 
+        // New PNG file from scratch
         public PNGFile()
         {
             chunks = new LinkedList<PNGChunk>();
         }
 
+        // Read existing PNG file
         public PNGFile(FileStream file)
         {
             // fileStream = file;
             chunks = new LinkedList<PNGChunk>();
             binaryReader = new BinaryReader(file);
+            Read();
         }
 
         private uint ReadBigEndian()
@@ -102,9 +126,20 @@ namespace ZFontConverter
             stream.Write(numBigEndian, 0, 4);
         }
 
+        private void WriteBigEndian(Stream stream, int number)
+        {
+            byte[] numBigEndian = BitConverter.GetBytes(number);
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(numBigEndian);
+            }
+            stream.Write(numBigEndian, 0, 4);
+        }
+
         public void Open(FileStream file)
         {
             binaryReader = new BinaryReader(file);
+            Read();
         }
 
         public bool Read()
@@ -143,25 +178,31 @@ namespace ZFontConverter
             return true;
         }
 
+        public void InsertHeader(uint width, uint height, byte depth = 8, byte colourType = 3, byte compression = 0, byte filter = 0, byte interlace = 0)
+        {
+            string ihdrType = "IHDR";
+            byte[] data = new byte[13];
+            MemoryStream stream = new MemoryStream(data);
+            WriteBigEndian(stream, width);
+            WriteBigEndian(stream, height);
+            stream.WriteByte(depth);
+            stream.WriteByte(colourType);
+            stream.WriteByte(compression);
+            stream.WriteByte(filter);
+            stream.WriteByte(interlace);
+            stream.Close();
+            PNGChunk ihdrChunk = new PNGChunk(ihdrType, data);
+            ihdrChunkNode = chunks.AddFirst(ihdrChunk);
+        }
+
         public void InsertGrabChunk(int xOffset, int yOffset)
         {
-            string grabType = "grAb";
-            byte[] grabTypeAscii = Encoding.ASCII.GetBytes(grabType);
             byte[] grabData = new byte[8];
-            byte[] grabX = BitConverter.GetBytes(xOffset);
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(grabX);
-            }
-            Array.Copy(grabX, 0, grabData, 0, 4);
-            byte[] grabY = BitConverter.GetBytes(yOffset);
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(grabY);
-            }
-            Array.Copy(grabY, 0, grabData, 4, 4);
-            uint crc = CRCCalculator.CalculateCRC(grabType, grabData);
-            PNGChunk grabChunk = new PNGChunk((uint)grabData.Length, grabType, crc, grabData);
+            MemoryStream stream = new MemoryStream(grabData);
+            WriteBigEndian(stream, xOffset);
+            WriteBigEndian(stream, yOffset);
+            stream.Close();
+            PNGChunk grabChunk = new PNGChunk("grAb", grabData);
             if (grabChunkNode == null)
             {
                 grabChunkNode = chunks.AddAfter(ihdrChunkNode, grabChunk);
@@ -170,6 +211,127 @@ namespace ZFontConverter
             {
                 grabChunkNode.Value = grabChunk;
             }
+        }
+
+        public void InsertPalette(Color[] Palette, byte transparentColour = 0, LinkedListNode<PNGChunk> after = null)
+        {
+            byte[] plteData = new byte[Palette.Length * 3];
+            byte[] trnsData = new byte[Palette.Length];
+            MemoryStream palStream = new MemoryStream(plteData);
+            MemoryStream transStream = new MemoryStream(trnsData);
+            foreach (Color colour in Palette)
+            {
+                palStream.WriteByte(colour.R);
+                palStream.WriteByte(colour.G);
+                palStream.WriteByte(colour.B);
+            }
+            palStream.Close();
+            for (int i = 0; i < Palette.Length; i++)
+            {
+                if (i == transparentColour)
+                {
+                    transStream.WriteByte(0); // Transparent
+                }
+                else
+                {
+                    transStream.WriteByte(255); // Opaque
+                }
+            }
+            transStream.Close();
+            PNGChunk plteChunk = new PNGChunk("PLTE", plteData);
+            PNGChunk trnsChunk = new PNGChunk("tRNS", trnsData);
+            if (after != null)
+            {
+                chunks.AddAfter(after, trnsChunk); // PLTE will go first
+                chunks.AddAfter(after, plteChunk);
+            }
+            else
+            {
+                chunks.AddLast(plteChunk);
+                chunks.AddLast(trnsChunk);
+            }
+        }
+
+        public void ReplacePalette(Color[] Palette, byte transparentColour = 0)
+        {
+            LinkedListNode<PNGChunk> prevChunk = chunks.First; // Insert new chunks after this one
+            foreach (var chunk in chunks)
+            {
+                if (chunk.Type == "PLTE")
+                {
+                    LinkedListNode<PNGChunk> palChunk = chunks.Find(chunk);
+                    prevChunk = palChunk.Previous;
+                    chunks.Remove(palChunk);
+                    break;
+                }
+            }
+            foreach (var chunk in chunks)
+            {
+                if (chunk.Type == "tRNS")
+                {
+                    LinkedListNode<PNGChunk> transChunk = chunks.Find(chunk);
+                    chunks.Remove(transChunk);
+                    break;
+                }
+            }
+            InsertPalette(Palette, transparentColour, prevChunk);
+        }
+
+        public void InsertTransparency(byte transparentColour = 0)
+        {
+            LinkedListNode<PNGChunk> palChunk;
+            foreach (var chunk in chunks)
+            {
+                if(chunk.Type == "PLTE")
+                {
+                    palChunk = chunks.Find(chunk);
+                    uint palLength = chunk.Length / 3;
+                    byte[] transData = new byte[palLength];
+                    for(int i = 0; i < palLength; i++)
+                    {
+                        if(i == transparentColour)
+                        {
+                            transData[i] = 0;
+                        }
+                        else
+                        {
+                            transData[i] = 255;
+                        }
+                    }
+                    PNGChunk transChunk = new PNGChunk("tRNS", transData);
+                    chunks.AddAfter(palChunk, transChunk);
+                    break;
+                }
+            }
+        }
+
+        public void InsertData(uint width, uint height, byte[] data)
+        {
+            int bufferSize = (int)((width + 1) * height);
+            MemoryStream idatRawStream = new MemoryStream(bufferSize);
+            for(uint row = 0; row < height; row++)
+            {
+                // Filter type byte
+                idatRawStream.WriteByte(0);
+                // Assuming data is row-major indices
+                idatRawStream.Write(data, (int)(row * width), (int)width);
+            }
+            MemoryStream idatStream = new MemoryStream(4);
+            using (DeflateStream compressStream = new DeflateStream(idatStream, CompressionLevel.NoCompression))
+            {
+                byte[] rawData = idatRawStream.GetBuffer();
+                compressStream.Write(rawData, 0, rawData.Length);
+            }
+            byte[] idatData = idatStream.GetBuffer();
+            Console.WriteLine($"Compressed {bufferSize} bytes to {idatData.Length} bytes.");
+            PNGChunk idatChunk = new PNGChunk("IDAT", idatData);
+            chunks.AddLast(idatChunk);
+        }
+
+        public void InsertEnd()
+        {
+            PNGChunk endChunk = new PNGChunk("IEND");
+            chunks.AddLast(endChunk);
         }
 
         private void WriteChunk(Stream stream, PNGChunk chunk)
@@ -189,11 +351,7 @@ namespace ZFontConverter
             try
             {
                 FileStream writeStream = File.Open(fname, FileMode.OpenOrCreate, FileAccess.Write);
-                writeStream.Write(PNGHead, 0, PNGHead.Length);
-                foreach (var chunk in chunks)
-                {
-                    WriteChunk(writeStream, chunk);
-                }
+                Write(writeStream);
                 writeStream.Close();
             }
             catch (Exception ex)
@@ -202,6 +360,15 @@ namespace ZFontConverter
                 return false;
             }
             return true;
+        }
+
+        public void Write(Stream stream)
+        {
+            stream.Write(PNGHead, 0, PNGHead.Length);
+            foreach(var chunk in chunks)
+            {
+                WriteChunk(stream, chunk);
+            }
         }
     }
 }

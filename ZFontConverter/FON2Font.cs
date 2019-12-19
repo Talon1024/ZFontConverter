@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Text;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.IO;
 
 namespace ZFontConverter
@@ -188,15 +190,13 @@ namespace ZFontConverter
             binaryReader.Close();
         }
 
-        public override FontCharacterImage? GetBitmapFor(byte character)
+        public override FontCharacterImage? GetBitmapFor(byte codePoint)
         {
-            int charIndex = character - FirstASCIIChar;
-            //Console.WriteLine($"Attempting to get bitmap for {character} ({(char)character})");
-            //Console.WriteLine($"FirstASCIIChar {FirstASCIIChar} LastASCIIChar {LastASCIIChar} charIndex {charIndex}");
-            if (charIndex < AllCharData.Length && charIndex >= 0 && CharWidths[charIndex] > 0)
+            int charIndex = codePoint - FirstASCIIChar;
+            if (charIndex < NumFontChars && charIndex >= 0 && CharWidths[charIndex] > 0)
             {
-                byte[] charData = AllCharData[charIndex]; // Palette references
                 ushort Width = CharWidths[charIndex];
+                byte[] charData = AllCharData[charIndex]; // Palette references
                 Bitmap bitmap = new Bitmap((int)Width, (int)FontHeight);
                 for (int i = 0; i < charData.Length; i++)
                 {
@@ -227,6 +227,39 @@ namespace ZFontConverter
                 FontInfo.Append($"Kerning {GlobalKerning}\n");
             }
             return FontInfo.ToString();
+        }
+
+        public override FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
+        {
+            int charIndex = codePoint - FirstASCIIChar;
+            //Console.WriteLine($"Attempting to get bitmap for {character} ({(char)character})");
+            //Console.WriteLine($"FirstASCIIChar {FirstASCIIChar} LastASCIIChar {LastASCIIChar} charIndex {charIndex}");
+            if (charIndex < AllCharData.Length && charIndex >= 0 && CharWidths[charIndex] > 0)
+            {
+                ushort Width = CharWidths[charIndex];
+                byte[] charData = AllCharData[charIndex]; // Palette references
+                Bitmap bitmap = new Bitmap((int)Width, (int)FontHeight, PixelFormat.Format8bppIndexed);
+                ColorPalette palette = bitmap.Palette;
+                Palette.CopyTo(palette.Entries, 0);
+                bitmap.Palette = palette;
+                BitmapData data = bitmap.LockBits(new Rectangle(0, 0, Width, (int)FontHeight), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+                for(int row = 0; row < FontHeight; row++)
+                {
+                    // The "stride" for a row may not be the same as the character width
+                    IntPtr rowPtr = data.Scan0 + row * data.Stride;
+                    // Since this code is copying row by row, calculate offset for each row
+                    int rowOffset = row * Width;
+                    Marshal.Copy(charData, rowOffset, rowPtr, Width);
+                }
+                bitmap.UnlockBits(data);
+                return new FontCharacterImage(bitmap);
+            }
+            return null;
+        }
+
+        public override Color[] GetPalette()
+        {
+            return Palette;
         }
     }
 }

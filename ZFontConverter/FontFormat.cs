@@ -10,7 +10,9 @@ namespace ZFontConverter
         public bool Ready { get; protected set; }
         public abstract bool IsFormat();
         public abstract void Read();
-        public abstract FontCharacterImage? GetBitmapFor(byte character);
+        public abstract FontCharacterImage? GetBitmapFor(byte codePoint); // Preview
+        public abstract FontCharacterImage? GetPalettedBitmapFor(byte codePoint); // Output
+        public abstract Color[] GetPalette(); // Font Palette
         /*
          Notes about font info:
          The file must be named font.inf
@@ -20,7 +22,7 @@ namespace ZFontConverter
          SpaceWidth: SpaceWidth
          FontHeight: FontHeight
          CellSize <int>, <int>: FixedWidth, FontHeight
-         TranslationType <"Console"|"Standard">: TranslationType        
+         TranslationType <"Console"|"Standard">: TranslationType
         */
         public virtual string GetFontInfo()
         {

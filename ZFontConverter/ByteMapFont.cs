@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.IO;
 
 namespace ZFontConverter
@@ -37,23 +39,23 @@ namespace ZFontConverter
             Characters = new Dictionary<byte, ByteMapFontCharacter>(128);
         }
 
-        public override FontCharacterImage? GetBitmapFor(byte character)
+        public override FontCharacterImage? GetBitmapFor(byte codePoint)
         {
-            bool available = Characters.TryGetValue(character, out ByteMapFontCharacter fontCharacter);
-            if (available && fontCharacter.Width > 0 && fontCharacter.Height > 0)
+            bool available = Characters.TryGetValue(codePoint, out ByteMapFontCharacter character);
+            if (available && character.Width > 0 && character.Height > 0)
             {
-                Bitmap bitmap = new Bitmap(fontCharacter.Width, fontCharacter.Height);
-                for (int i = 0; i < fontCharacter.Data.Length; i++)
+                Bitmap bitmap = new Bitmap(character.Width, character.Height);
+                for (int i = 0; i < character.Data.Length; i++)
                 {
-                    int Column = i % fontCharacter.Width;
-                    int Row = i / fontCharacter.Width;
-                    bitmap.SetPixel(Column, Row, GetColor(fontCharacter.Data[i]));
+                    int Column = i % character.Width;
+                    int Row = i / character.Width;
+                    bitmap.SetPixel(Column, Row, GetColor(character.Data[i]));
                 }
                 return new FontCharacterImage {
                     bitmap = bitmap,
-                    xOffset = fontCharacter.XOffset,
-                    yOffset = fontCharacter.YOffset,
-                    xShift = fontCharacter.Shift
+                    xOffset = character.XOffset,
+                    yOffset = character.YOffset,
+                    xShift = character.Shift
                 };
             }
             return null;
@@ -105,6 +107,7 @@ namespace ZFontConverter
             binaryReader.BaseStream.Position += 4; // Skip reserved values
             byte PaletteSize = (byte)(binaryReader.ReadByte() + 1);
             Palette = new Color[PaletteSize];
+            Palette[0] = Color.Transparent;
             for (int i = 1; i < PaletteSize; i++)
             {
                 // 6-bit RGB
@@ -113,8 +116,8 @@ namespace ZFontConverter
                 byte b = VgaToRgb(binaryReader.ReadByte());
                 Palette[i] = Color.FromArgb(r, g, b);
             }
-            byte InfoLength = binaryReader.ReadByte(); // Contrary to what ZDoom Wiki says, this is NOT the list of ASCII characters in the font, but rather a comment
-            binaryReader.BaseStream.Position += InfoLength; // Skip comment
+            byte InfoLength = binaryReader.ReadByte(); // BMF files can have a comment. Read the length of the comment and skip it.
+            binaryReader.BaseStream.Position += InfoLength;
             CharacterCount = binaryReader.ReadUInt16();
             HeaderSize = binaryReader.BaseStream.Position;
         }
@@ -158,6 +161,42 @@ namespace ZFontConverter
         private Color GetColor(byte palIndex)
         {
             return Palette[Math.Min(palIndex, LargestUsedColour - 1)];
+        }
+
+        public override FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
+        {
+            bool available = Characters.TryGetValue(codePoint, out ByteMapFontCharacter character);
+            if (available && character.Width > 0 && character.Height > 0)
+            {
+                Bitmap bitmap = new Bitmap(character.Width, character.Height, PixelFormat.Format8bppIndexed);
+                ColorPalette palette = bitmap.Palette;
+                Palette.CopyTo(palette.Entries, 0);
+                bitmap.Palette = palette;
+                BitmapData data = bitmap.LockBits(new Rectangle(0, 0, character.Width, character.Height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+                // Doing it this way ensures the data is copied correctly, regardless of how wide each character is.
+                for (int row = 0; row < character.Height; row++)
+                {
+                    // The "stride" for a row may not be the same as the character width
+                    IntPtr rowPtr = data.Scan0 + row * data.Stride;
+                    // Since this code is copying row by row, calculate offset for each row
+                    int rowOffset = row * character.Width;
+                    Marshal.Copy(character.Data, rowOffset, rowPtr, character.Width);
+                }
+                bitmap.UnlockBits(data);
+                return new FontCharacterImage
+                {
+                    bitmap = bitmap,
+                    xOffset = character.XOffset,
+                    yOffset = character.YOffset,
+                    xShift = character.Shift
+                };
+            }
+            return null;
+        }
+
+        public override Color[] GetPalette()
+        {
+            return Palette;
         }
     }
 }

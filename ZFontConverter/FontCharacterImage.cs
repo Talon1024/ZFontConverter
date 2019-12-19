@@ -21,7 +21,7 @@ namespace ZFontConverter
             bitmap = bmp;
             this.xOffset = xOffset;
             this.yOffset = yOffset;
-            xShift = shift;
+            xShift = shift ?? 0;
         }
     }
 }

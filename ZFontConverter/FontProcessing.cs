@@ -88,27 +88,33 @@ namespace ZFontConverter
 
             byte validChars = 0;
             string fontName = Path.GetFileNameWithoutExtension(fontFName);
-            string FontCharDir = $"{outDir}{Path.DirectorySeparatorChar}fonts{Path.DirectorySeparatorChar}{fontName}";
+            string FontCharDir = String.Format("{0}{2}fonts{2}{1}", outDir, fontName, Path.DirectorySeparatorChar);
             for (byte bc = 0; bc < 255; bc++)
             {
                 byte[] isoChars = { bc };
                 string ucString = codePage.GetString(isoChars);
                 ushort codePoint = ucString[0];
-                FontCharacterImage? CharBmp = font.GetBitmapFor(bc);
-                if (CharBmp != null)
+                FontCharacterImage? charImage = font.GetPalettedBitmapFor(bc);
+                if (charImage.HasValue)
                 {
-                    var bitmap = CharBmp.Value.bitmap;
                     Directory.CreateDirectory(FontCharDir);
                     string fname = String.Format("{1}{2}{0:X4}.png", codePoint, FontCharDir, Path.DirectorySeparatorChar);
-                    bitmap.Save(fname, System.Drawing.Imaging.ImageFormat.Png);
-                    if (CharBmp.Value.xOffset != 0 || CharBmp.Value.yOffset != 0)
+                    charImage.Value.bitmap.Save(fname);
+                    // Replace palette and transparency info in PNG
+                    PNGFile png = new PNGFile();
+                    using(FileStream pngFileStream = File.Open(fname, FileMode.Open, FileAccess.ReadWrite))
                     {
-                        FileStream pngFile = File.Open(fname, FileMode.Open, FileAccess.ReadWrite);
-                        // Re-write PNG file with grAB chunk inserted
-                        PNGFile png = new PNGFile(pngFile);
-                        png.Read();
-                        png.InsertGrabChunk(-CharBmp.Value.xOffset, -CharBmp.Value.yOffset);
-                        png.Write(fname);
+                        png.Open(pngFileStream);
+                    }
+                    png.ReplacePalette(font.GetPalette(), 0);
+                    // Set offsets if necessary
+                    if (charImage.Value.xOffset != 0 || charImage.Value.yOffset != 0)
+                    {
+                        png.InsertGrabChunk(-charImage.Value.xOffset, -charImage.Value.yOffset);
+                    }
+                    using (FileStream pngFileStream = File.Open(fname, FileMode.Create, FileAccess.Write))
+                    {
+                        png.Write(pngFileStream);
                     }
                     validChars += 1;
                 }
