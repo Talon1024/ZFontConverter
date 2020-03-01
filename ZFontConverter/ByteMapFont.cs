@@ -160,7 +160,22 @@ namespace ZFontConverter
 
         private Color GetColor(byte palIndex)
         {
-            return Palette[Math.Min(palIndex, LargestUsedColour - 1)];
+            int index;
+            // LargestUsedColour may not be set for all BMF fonts
+            if (LargestUsedColour == 0)
+            {
+                index = palIndex;
+            }
+            else
+            {
+                index = Math.Min(palIndex, LargestUsedColour - 1);
+            }
+            // Ensure index stays within array bounds
+            if(index > Palette.Length)
+            {
+                index = 0;
+            }
+            return Palette[index];
         }
 
         public override FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
