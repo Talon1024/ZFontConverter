@@ -17,6 +17,7 @@ namespace ZFontConverter.GUI
                 Filter =
                 "Byte Map Font (*.bmf)|*.bmf|" +
                 "FON2 (*.fon2)|*.fon2|" +
+                "FON1 (*.fon1)|*.fon1|" +
                 "All files (*.*)|*.*",
                 SupportMultiDottedExtensions = true,
             };

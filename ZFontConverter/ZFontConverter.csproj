@@ -50,6 +50,7 @@
     <Compile Include="Doom\DoomWAD.cs" />
     <Compile Include="Doom\WADFont.cs" />
     <Compile Include="Doom\DoomPicture.cs" />
+    <Compile Include="FON1Font.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="GUI\" />

@@ -120,9 +120,10 @@ namespace ZFontConverter
                 while (curPos < Size)
                 {
                     sbyte code = binaryReader.ReadSByte();
-                    if (code > 0)
+                    if (code >= 0)
                     {
                         byte runLength = (byte)(code + 1);
+                        // byte pixel = binaryReader.ReadByte();
                         for (int j = 0; j < runLength; j++)
                         {
                             vs[i][curPos + j] = binaryReader.ReadByte();
@@ -133,9 +134,11 @@ namespace ZFontConverter
                     {
                         byte theByte = binaryReader.ReadByte();
                         byte runLength = (byte)(-code + 1);
-                        byte[] bytes = DecodeRLE((byte)runLength, theByte);
-                        Array.Copy(bytes, 0, vs[i], curPos, bytes.Length);
-                        curPos += bytes.Length;
+                        for (int j = 0; j < runLength; j++)
+                        {
+                            vs[i][curPos + j] = theByte;
+                        }
+                        curPos += runLength;
                     }
                 }
             }
@@ -167,17 +170,6 @@ namespace ZFontConverter
             {
                 return Palette[palIndex];
             }
-        }
-
-        private byte[] DecodeRLE(byte runLength, byte theByte)
-        {
-            byte[] decoded = new byte[runLength];
-            // Array.Fill(decoded, theByte);
-            for (int i = 0; i < runLength; i++)
-            {
-                decoded[i] = theByte;
-            }
-            return decoded;
         }
 
         public override void Read()

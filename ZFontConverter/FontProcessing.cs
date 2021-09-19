@@ -16,6 +16,7 @@ namespace ZFontConverter
         {
             FontFormat[] fontFormats = {
                 new FON2Font(fontFileStream),
+                new FON1Font(fontFileStream),
                 new ByteMapFont(fontFileStream)
             };
             foreach (var format in fontFormats)

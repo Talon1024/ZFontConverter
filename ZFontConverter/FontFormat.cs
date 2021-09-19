@@ -13,6 +13,7 @@ namespace ZFontConverter
         public abstract FontCharacterImage? GetBitmapFor(byte codePoint); // Preview
         public abstract FontCharacterImage? GetPalettedBitmapFor(byte codePoint); // Output
         public abstract Color[] GetPalette(); // Font Palette
+        // public abstract void Export(string RelativePath);
         /*
          Notes about font info:
          The file must be named font.inf
