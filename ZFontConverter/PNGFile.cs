@@ -216,9 +216,8 @@ namespace ZFontConverter
         public void InsertPalette(Color[] Palette, byte transparentColour = 0, LinkedListNode<PNGChunk> after = null)
         {
             byte[] plteData = new byte[Palette.Length * 3];
-            byte[] trnsData = new byte[Palette.Length];
             MemoryStream palStream = new MemoryStream(plteData);
-            MemoryStream transStream = new MemoryStream(trnsData);
+            MemoryStream transStream = new MemoryStream(256);
             foreach (Color colour in Palette)
             {
                 palStream.WriteByte(colour.R);
@@ -231,12 +230,11 @@ namespace ZFontConverter
                 if (i == transparentColour)
                 {
                     transStream.WriteByte(0); // Transparent
+                    break;
                 }
-                else
-                {
-                    transStream.WriteByte(255); // Opaque
-                }
+                transStream.WriteByte(255); // Opaque
             }
+            byte[] trnsData = transStream.ToArray();
             transStream.Close();
             PNGChunk plteChunk = new PNGChunk("PLTE", plteData);
             PNGChunk trnsChunk = new PNGChunk("tRNS", trnsData);
