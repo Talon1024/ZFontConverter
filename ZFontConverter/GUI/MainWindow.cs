@@ -145,7 +145,7 @@ namespace ZFontConverter.GUI
             convertButton.Click += (object sender, EventArgs e) => {
                 if (outputDirectory != null && fontFile != null && fontFileName != null)
                 {
-                    FontProcessing.ConvertFont(fontFileName, fontFile, outputDirectory);
+                    FontProcessing.ExportFont(fontFileName, fontFile, outputDirectory);
                 }
             };
 

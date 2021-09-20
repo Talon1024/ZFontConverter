@@ -173,6 +173,10 @@ namespace ZFontConverter
                 {
                     ihdrChunkNode = chunks.Last;
                 }
+                if (type == "grAb")
+                {
+                    grabChunkNode = chunks.Last;
+                }
             }
             binaryReader.Close();
             return true;
@@ -210,6 +214,15 @@ namespace ZFontConverter
             else
             {
                 grabChunkNode.Value = grabChunk;
+            }
+        }
+
+        public void RemoveGrabChunk()
+        {
+            if (grabChunkNode != null)
+            {
+                chunks.Remove(grabChunkNode);
+                grabChunkNode = null;
             }
         }
 

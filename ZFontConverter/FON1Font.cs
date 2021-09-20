@@ -55,6 +55,7 @@ namespace ZFontConverter
 
         public FON1Font(FileStream fs)
         {
+            Filename = Path.GetFileName(fs.Name);
             binaryReader = new BinaryReader(fs);
         }
 
@@ -81,7 +82,7 @@ namespace ZFontConverter
             }
         }
 
-        public override FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
+        public FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
         {
             Bitmap bitmap = ConvertByteArray(Pixels[codePoint], true);
             return new FontCharacterImage(bitmap);
@@ -122,11 +123,6 @@ namespace ZFontConverter
         {
             binaryReader.BaseStream.Position = 0;
             byte[] header = binaryReader.ReadBytes(4);
-            return IsFon1Header(header);
-        }
-
-        private bool IsFon1Header(byte[] header)
-        {
             int comparison = 0;
             for (int i = 0; i < header.Length; i++)
             {
@@ -159,7 +155,7 @@ namespace ZFontConverter
             Palette = new Color[256];
             for (int c = 0; c < 256; c++)
             {
-                Palette[c] = Color.FromArgb(c, c, c);
+                Palette[c] = Color.FromArgb(c == 0 ? 0 : 255, c, c, c);
             }
         }
 
@@ -183,7 +179,8 @@ namespace ZFontConverter
                     {
                         Console.WriteLine("No more data available.");
                         Console.WriteLine(except.StackTrace);
-                        return;
+                        Array.Clear(Pixels[codePoint], 0, (int)Size);
+                        continue;
                     }
                     // Based on studying GZDoom code
                     if (code >= 0)
@@ -214,7 +211,43 @@ namespace ZFontConverter
 
         public override string GetFontInfo()
         {
-            return $"CellSize {SpaceWidth}, {FontHeight}\nTranslationType Console";
+            return base.GetFontInfo() + GetMonospaceFontInfo() + "TranslationType Console\n";
+        }
+
+        public override void Export(string fontCharDir, ApplyOffsetsCallback ApplyOffsets)
+        {
+            // Calculate sheet rows, columns, width, and height
+            int charRows = 16; // FON1 fonts (should) always have 256 characters
+            int charCols = 16;
+            int charHeight = (int)FontHeight;
+            int sheetWidth = charCols * (int)SpaceWidth; // Widths are the same for all characters
+            int sheetHeight = charRows * (int)FontHeight;
+            Bitmap fontSheet = new Bitmap(sheetWidth, sheetHeight, PixelFormat.Format8bppIndexed);
+            Palette.CopyTo(fontSheet.Palette.Entries, 0);
+            // Copy character graphics to the bitmap, row by row
+            int curChar = -1;
+            foreach (byte[] charImage in Pixels)
+            {
+                curChar += 1;
+                if (charImage == null)
+                {
+                    continue;
+                }
+                int sheetCol = curChar % charCols;
+                int sheetRow = curChar / charCols;
+                Rectangle charRect = new Rectangle((int)SpaceWidth * sheetCol, charHeight * sheetRow, (int)SpaceWidth, charHeight);
+                BitmapData charPixels = fontSheet.LockBits(charRect, ImageLockMode.ReadWrite, PixelFormat.Format8bppIndexed);
+                for (int imageRow = 0; imageRow < FontHeight; imageRow++)
+                {
+                    IntPtr sheetData = charPixels.Scan0 + imageRow * charPixels.Stride;
+                    Marshal.Copy(charImage, imageRow * (int)SpaceWidth, sheetData, (int)SpaceWidth);
+                }
+                fontSheet.UnlockBits(charPixels);
+            }
+            string sheetFileName = string.Format("{1}{0:X4}.png", 0, fontCharDir);
+            fontSheet.Save(sheetFileName);
+            ApplyOffsets(sheetFileName, Palette, 0, 0);
+            base.Export(fontCharDir, ApplyOffsets);
         }
     }
 }

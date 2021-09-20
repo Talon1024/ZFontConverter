@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.IO;
+using System.Collections;
 
 namespace ZFontConverter
 {
@@ -18,7 +20,7 @@ namespace ZFontConverter
         public byte[] Data;
     }
 
-    public class ByteMapFont : FontFormat
+    public class ByteMapFont : FontFormat, IEnumerable
     {
         public static readonly byte[] BmfHeader = { 0xE1, 0xE6, 0xD5, 0x1A };
         private BinaryReader binaryReader;
@@ -35,6 +37,7 @@ namespace ZFontConverter
 
         public ByteMapFont(FileStream fs)
         {
+            Filename = Path.GetFileName(fs.Name);
             binaryReader = new BinaryReader(fs);
             Characters = new Dictionary<byte, ByteMapFontCharacter>(128);
         }
@@ -89,7 +92,7 @@ namespace ZFontConverter
                 SpaceWidth = (uint)(totalWidth * 2 / (Characters.Count * 3));
             }
             binaryReader.Close();
-            Ready = true;
+            Ready = CharacterCount > 0;
         }
 
         private void ReadHeader()
@@ -178,7 +181,7 @@ namespace ZFontConverter
             return Palette[index];
         }
 
-        public override FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
+        public FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
         {
             bool available = Characters.TryGetValue(codePoint, out ByteMapFontCharacter character);
             if (available && character.Width > 0 && character.Height > 0)
@@ -212,6 +215,84 @@ namespace ZFontConverter
         public override Color[] GetPalette()
         {
             return Palette;
+        }
+
+        public override string GetFontInfo()
+        {
+            return base.GetFontInfo() + GetVariableWidthFontInfo();
+        }
+
+        public override void Export(string fontCharDir, ApplyOffsetsCallback ApplyOffsets)
+        {
+            foreach(ByteMapFontCharacter character in this)
+            {
+                if (character.Width == 0 || character.Height == 0)
+                {
+                    // Blank!
+                    continue;
+                }
+                Bitmap bitmap = new Bitmap(character.Width, character.Height, PixelFormat.Format8bppIndexed);
+                Palette.CopyTo(bitmap.Palette.Entries, 0);
+                Rectangle rect = new Rectangle(0, 0, character.Width, character.Height);
+                BitmapData data = bitmap.LockBits(rect, ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+                for (int row = 0; row < character.Height; row++)
+                {
+                    IntPtr ptr = data.Scan0 + row * data.Stride;
+                    Marshal.Copy(character.Data, row * character.Width, ptr, character.Width);
+                }
+                bitmap.UnlockBits(data);
+                string charFilename = string.Format("{1}{0:X4}.png", character.ASCIICharacter, fontCharDir);
+                bitmap.Save(charFilename);
+                ApplyOffsets(charFilename, Palette, 0, character.YOffset);
+            }
+            base.Export(fontCharDir, ApplyOffsets);
+        }
+/*
+        private class ByteMapFontEnumerator : IEnumerator<ByteMapFontCharacter>
+        {
+            private IEnumerator<KeyValuePair<byte, ByteMapFontCharacter>> DictEnumerator;
+
+            public ByteMapFontEnumerator(IEnumerator<KeyValuePair<byte, ByteMapFontCharacter>> enumerator)
+            {
+                DictEnumerator = enumerator;
+            }
+
+            object IEnumerator.Current {
+                get
+                {
+                    KeyValuePair<byte, ByteMapFontCharacter> pair = DictEnumerator.Current;
+                    return pair.Value;
+                }
+            }
+
+            ByteMapFontCharacter IEnumerator<ByteMapFontCharacter>.Current
+            {
+                get
+                {
+                    KeyValuePair<byte, ByteMapFontCharacter> pair = DictEnumerator.Current;
+                    return pair.Value;
+                }
+            }
+
+            void IDisposable.Dispose()
+            {
+                DictEnumerator.Dispose();
+            }
+
+            bool IEnumerator.MoveNext()
+            {
+                return DictEnumerator.MoveNext();
+            }
+
+            void IEnumerator.Reset()
+            {
+                DictEnumerator.Reset();
+            }
+        }
+*/
+        public IEnumerator GetEnumerator()
+        {
+            return Characters.Values.GetEnumerator();
         }
     }
 }

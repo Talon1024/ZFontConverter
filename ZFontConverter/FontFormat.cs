@@ -1,9 +1,13 @@
 ﻿using System.Drawing;
 using System.Text;
+using System.IO;
+
 namespace ZFontConverter
 {
     public abstract class FontFormat
     {
+        protected string Filename;
+        public delegate void ApplyOffsetsCallback(string charFName, Color[] Palette, int xOffset, int yOffset);
         public uint SpaceWidth { get; protected set; }
         public uint FontHeight { get; protected set; }
         public int GlobalKerning { get; protected set; }
@@ -11,9 +15,18 @@ namespace ZFontConverter
         public abstract bool IsFormat();
         public abstract void Read();
         public abstract FontCharacterImage? GetBitmapFor(byte codePoint); // Preview
-        public abstract FontCharacterImage? GetPalettedBitmapFor(byte codePoint); // Output
         public abstract Color[] GetPalette(); // Font Palette
-        // public abstract void Export(string RelativePath);
+        public virtual void Export(string fontCharDir, ApplyOffsetsCallback ApplyOffsets)
+        {
+            string infoFileName = string.Format("{0}font.inf", fontCharDir);
+            using(FileStream infoFileStream = File.Open(infoFileName, FileMode.Create, FileAccess.ReadWrite))
+            {
+                using(StreamWriter sw = new StreamWriter(infoFileStream))
+                {
+                    sw.Write(GetFontInfo());
+                }
+            }
+        }
         /*
          Notes about font info:
          The file must be named font.inf
@@ -27,6 +40,10 @@ namespace ZFontConverter
         */
         public virtual string GetFontInfo()
         {
+            return $"// {Filename}\n";
+        }
+        protected virtual string GetVariableWidthFontInfo()
+        {
             StringBuilder FontInfo = new StringBuilder($"SpaceWidth {SpaceWidth}\n");
             FontInfo.Append($"FontHeight {FontHeight}\n");
             if (GlobalKerning != 0)
@@ -34,6 +51,10 @@ namespace ZFontConverter
                 FontInfo.Append($"Kerning {GlobalKerning}\n");
             }
             return FontInfo.ToString();
+        }
+        protected virtual string GetMonospaceFontInfo()
+        {
+            return $"CellSize {SpaceWidth}, {FontHeight}\n";
         }
     }
 }

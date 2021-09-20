@@ -50,7 +50,7 @@ namespace ZFontConverter
         {
             FontFormat font = ReadFont(fontFName);
             if (font == null) return;
-            ConvertFont(fontFName, font, outDir);
+            ExportFont(fontFName, font, outDir);
         }
 
         // Font data is already available
@@ -79,17 +79,42 @@ namespace ZFontConverter
             }
         }
 
-        public static void ConvertFont(string fontFName, FontFormat font, string outDir = "")
+        public static void ApplyOffsets(string charFName, Color[] Palette, int xOffset, int yOffset)
+        {
+            PNGFile png = new PNGFile();
+            using(FileStream pngFileStream = File.Open(charFName, FileMode.Open, FileAccess.ReadWrite))
+            {
+                png.Open(pngFileStream); // Read
+            }
+            png.ReplacePalette(Palette, 0);
+            // Set offsets if necessary
+            if (xOffset != 0 || yOffset != 0)
+            {
+                png.InsertGrabChunk(xOffset, yOffset);
+            }
+            else
+            {
+                png.RemoveGrabChunk();
+            }
+            using (FileStream pngFileStream = File.Open(charFName, FileMode.Create, FileAccess.Write))
+            {
+                png.Write(pngFileStream); // Write
+            }
+        }
+
+        public static void ExportFont(string fontFName, FontFormat font, string outDir = "")
         {
             if (!font.Ready) return;
             if (outDir == "")
             {
                 outDir = Path.GetDirectoryName(fontFName);
             }
-
-            byte validChars = 0;
             string fontName = Path.GetFileNameWithoutExtension(fontFName);
-            string FontCharDir = String.Format("{0}{2}fonts{2}{1}", outDir, fontName, Path.DirectorySeparatorChar);
+            string fontCharDir = String.Format("{0}{2}fonts{2}{1}{2}", outDir, fontName, Path.DirectorySeparatorChar);
+            Directory.CreateDirectory(fontCharDir);
+            font.Export(fontCharDir, ApplyOffsets);
+/*
+            byte validChars = 0;
             for (byte bc = 0; bc < 255; bc++)
             {
                 byte[] isoChars = { bc };
@@ -128,6 +153,7 @@ namespace ZFontConverter
                 sw.Flush();
                 infoFileStream.Close();
             }
+            */
         }
     }
 }

@@ -94,9 +94,11 @@ namespace ZFontConverter.Doom
             return NotImage;
         }
 
+        /*
         public override FontCharacterImage? GetPalettedBitmapFor(byte codePoint)
         {
             throw new NotImplementedException();
         }
+        */
     }
 }
