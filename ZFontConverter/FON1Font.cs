@@ -3,23 +3,33 @@ using System.Text;
 using System.IO;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace ZFontConverter
 {
+    class UnicodeBlock
+    {
+        public ushort Start;
+        public ushort Size;
+        public Bitmap Sheet;
+        public int Rows;
+        public int Cols;
+    }
     public class FON1Font : FontFormat
     {
         public static readonly byte[] Fon1header = Encoding.ASCII.GetBytes("FON1");
         private BinaryReader binaryReader;
         private Color[] Palette;
         private byte[][] Pixels;
+
+        private const ushort MAX_BLOCK_SIZE = 256;
+        // Windows-1252 to unicode
         // Copied from GZDoom/Raze source code:
         // https://github.com/coelckers/Raze/blob/de816fa90a9240d891ad87b447bcae7a37ab0317/source/common/utility/utf8.cpp#L150
-        // To be used later
-        /*
-        private ushort[] win1252map = {
+        private readonly ushort[] Windows1252Map = {
             0x20AC,
-            0x81  ,
+            0x81  ,  // Unchanged
             0x201A,
             0x0192,
             0x201E,
@@ -31,10 +41,10 @@ namespace ZFontConverter
             0x0160,
             0x2039,
             0x0152,
-            0x8d  ,
+            0x8d  ,  // Unchanged
             0x017D,
-            0x8f  ,
-            0x90  ,
+            0x8f  ,  // Unchanged
+            0x90  ,  // Unchanged
             0x2018,
             0x2019,
             0x201C,
@@ -47,11 +57,10 @@ namespace ZFontConverter
             0x0161,
             0x203A,
             0x0153,
-            0x9d  ,
+            0x9d  ,  // Unchanged
             0x017E,
             0x0178,
         };
-        */
 
         public FON1Font(FileStream fs)
         {
@@ -214,39 +223,115 @@ namespace ZFontConverter
             return base.GetFontInfo() + GetMonospaceFontInfo() + "TranslationType Console\n";
         }
 
+        private List<UnicodeBlock> GetBlocks()
+        {
+            List<UnicodeBlock> blocks = new List<UnicodeBlock>();
+            ushort[] win1252chars = new ushort[Windows1252Map.Length + 1];
+            win1252chars[0] = 0xFF;
+            Windows1252Map.CopyTo(win1252chars, 1);
+            Array.Sort(win1252chars);
+            ushort curBlock = 0;
+            ushort lastBlock = 0;
+            ushort lastCodePoint = 0;
+            int blockSize = 0;
+            foreach (ushort codePoint in win1252chars)
+            {
+                if (codePoint > (curBlock + MAX_BLOCK_SIZE))
+                {
+                    curBlock = codePoint;
+                    blockSize = lastCodePoint - lastBlock + 1;
+                    blocks.Add(new UnicodeBlock
+                    {
+                        Start = lastBlock,
+                        Size = (ushort)blockSize
+                    });
+                }
+                lastBlock = curBlock;
+                lastCodePoint = codePoint;
+            }
+            blockSize = lastCodePoint - lastBlock + 1;
+            blocks.Add(new UnicodeBlock {
+                Start = lastBlock,
+                Size = (ushort)blockSize
+            });
+            return blocks;
+        }
+
+        private ushort RemapCodePoint(byte origCodePoint)
+        {
+            if (origCodePoint >= 128 && origCodePoint < 160)
+            {
+                return Windows1252Map[origCodePoint - 128];
+            }
+            return origCodePoint;
+        }
+
         public override void Export(string fontCharDir, ApplyOffsetsCallback ApplyOffsets)
         {
-            // Calculate sheet rows, columns, width, and height
-            int charRows = 16; // FON1 fonts (should) always have 256 characters
-            int charCols = 16;
+            List<UnicodeBlock> blocks = GetBlocks();
+            UnicodeBlock[] blockFor = new UnicodeBlock[256];
+            int[] blockIndexFor = new int[256];
             int charHeight = (int)FontHeight;
-            int sheetWidth = charCols * (int)SpaceWidth; // Widths are the same for all characters
-            int sheetHeight = charRows * (int)FontHeight;
-            Bitmap fontSheet = new Bitmap(sheetWidth, sheetHeight, PixelFormat.Format8bppIndexed);
-            Palette.CopyTo(fontSheet.Palette.Entries, 0);
-            // Copy character graphics to the bitmap, row by row
-            int curChar = -1;
-            foreach (byte[] charImage in Pixels)
+            // Initialize sheets
+            for (int i = 0; i < blocks.Count; i++)
             {
-                curChar += 1;
+                UnicodeBlock block = blocks[i];
+                block.Rows = (int)Math.Floor(Math.Sqrt(block.Size));
+                block.Cols = (int)Math.Ceiling((double)block.Size / block.Rows);
+                int sheetWidth = block.Cols * (int)SpaceWidth; // Widths are the same for all characters
+                int sheetHeight = block.Rows * (int)FontHeight;
+                block.Sheet = new Bitmap(sheetWidth, sheetHeight, PixelFormat.Format8bppIndexed);
+                Palette.CopyTo(block.Sheet.Palette.Entries, 0);
+            }
+            // Figure out which characters belong in which blocks
+            for (int charIndex = 0; charIndex < 256; charIndex++)
+            {
+                ushort remapped = RemapCodePoint((byte)charIndex);
+                for (int blockIndex = blocks.Count - 1; blockIndex >= 0; blockIndex--)
+                {
+                    UnicodeBlock block = blocks[blockIndex];
+                    if (block.Start <= remapped)
+                    {
+                        blockFor[charIndex] = block;
+                        blockIndexFor[charIndex] = blockIndex;
+                        break;
+                    }
+                }
+            }
+            // Copy character graphics to their respective sheets, row by row
+            for (int charIndex = 0; charIndex < 256; charIndex++)
+            {
+                byte[] charImage = Pixels[charIndex];
                 if (charImage == null)
                 {
                     continue;
                 }
-                int sheetCol = curChar % charCols;
-                int sheetRow = curChar / charCols;
-                Rectangle charRect = new Rectangle((int)SpaceWidth * sheetCol, charHeight * sheetRow, (int)SpaceWidth, charHeight);
-                BitmapData charPixels = fontSheet.LockBits(charRect, ImageLockMode.ReadWrite, PixelFormat.Format8bppIndexed);
+                UnicodeBlock block = blockFor[charIndex];
+                ushort remapped = RemapCodePoint((byte)charIndex);
+                int sheetPosition = remapped - block.Start;
+                int sheetCol = sheetPosition % block.Cols;
+                int sheetRow = sheetPosition / block.Cols;
+                Rectangle charRect = new Rectangle(
+                    (int)SpaceWidth * sheetCol,
+                    charHeight * sheetRow,
+                    (int)SpaceWidth,
+                    charHeight
+                );
+                Console.WriteLine($"{sheetPosition} {block.Size} {sheetCol} {sheetRow} {block.Sheet.Width} {block.Sheet.Height} {charRect.X} {charRect.Y} {charRect.Width} {charRect.Height}");
+                BitmapData charPixels = block.Sheet.LockBits(charRect, ImageLockMode.ReadWrite, PixelFormat.Format8bppIndexed);
                 for (int imageRow = 0; imageRow < FontHeight; imageRow++)
                 {
                     IntPtr sheetData = charPixels.Scan0 + imageRow * charPixels.Stride;
                     Marshal.Copy(charImage, imageRow * (int)SpaceWidth, sheetData, (int)SpaceWidth);
                 }
-                fontSheet.UnlockBits(charPixels);
+                block.Sheet.UnlockBits(charPixels);
             }
-            string sheetFileName = string.Format("{1}{0:X4}.png", 0, fontCharDir);
-            fontSheet.Save(sheetFileName);
-            ApplyOffsets(sheetFileName, Palette, 0, 0);
+            foreach (UnicodeBlock block in blocks)
+            {
+                string sheetFileName = string.Format("{1}{0:X4}.png", block.Start, fontCharDir);
+                block.Sheet.Save(sheetFileName);
+                ApplyOffsets(sheetFileName, Palette, 0, 0);
+            }
             base.Export(fontCharDir, ApplyOffsets);
         }
     }
