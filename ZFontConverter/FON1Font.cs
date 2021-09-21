@@ -317,7 +317,7 @@ namespace ZFontConverter
                     (int)SpaceWidth,
                     charHeight
                 );
-                Console.WriteLine($"{sheetPosition} {block.Size} {sheetCol} {sheetRow} {block.Sheet.Width} {block.Sheet.Height} {charRect.X} {charRect.Y} {charRect.Width} {charRect.Height}");
+                // Console.WriteLine($"{sheetPosition} {block.Size} {sheetCol} {sheetRow} {block.Sheet.Width} {block.Sheet.Height} {charRect.X} {charRect.Y} {charRect.Width} {charRect.Height}");
                 BitmapData charPixels = block.Sheet.LockBits(charRect, ImageLockMode.ReadWrite, PixelFormat.Format8bppIndexed);
                 for (int imageRow = 0; imageRow < FontHeight; imageRow++)
                 {
