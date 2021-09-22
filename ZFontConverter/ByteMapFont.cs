@@ -20,7 +20,7 @@ namespace ZFontConverter
         public byte[] Data;
     }
 
-    public class ByteMapFont : FontFormat, IEnumerable
+    public class ByteMapFont : FontFormat
     {
         public static readonly byte[] BmfHeader = { 0xE1, 0xE6, 0xD5, 0x1A };
         private BinaryReader binaryReader;
@@ -33,7 +33,6 @@ namespace ZFontConverter
         private Color[] Palette;
         private ushort CharacterCount;
         private Dictionary<byte, ByteMapFontCharacter> Characters;
-        private long HeaderSize;
 
         public ByteMapFont(FileStream fs)
         {
@@ -90,7 +89,7 @@ namespace ZFontConverter
             if (!IsFormat()) return;
             ReadHeader();
             ReadAllCharacters();
-            if (SpaceWidth == 0)
+            if (SpaceWidth == 0 && Characters.Count > 0)
             {
                 // Ported from GZDoom source code
                 uint totalWidth = 0;
@@ -101,7 +100,7 @@ namespace ZFontConverter
                 SpaceWidth = (uint)(totalWidth * 2 / (Characters.Count * 3));
             }
             binaryReader.Close();
-            Ready = CharacterCount > 0;
+            Ready = Characters.Count > 0;
         }
 
         private void ReadHeader()
@@ -117,10 +116,11 @@ namespace ZFontConverter
             UsedColours = binaryReader.ReadByte();
             LargestUsedColour = binaryReader.ReadByte();
             binaryReader.BaseStream.Position += 4; // Skip reserved values
-            byte PaletteSize = (byte)(binaryReader.ReadByte() + 1);
-            Palette = new Color[PaletteSize];
+            // 255 + 1 causes an overflow, so use a ushort just in case
+            ushort paletteSize = (ushort)(binaryReader.ReadByte() + 1);
+            Palette = new Color[paletteSize];
             Palette[0] = Color.Transparent;
-            for (int i = 1; i < PaletteSize; i++)
+            for (int i = 1; i < paletteSize; i++)
             {
                 // 6-bit RGB
                 byte r = VgaToRgb(binaryReader.ReadByte());
@@ -128,10 +128,9 @@ namespace ZFontConverter
                 byte b = VgaToRgb(binaryReader.ReadByte());
                 Palette[i] = Color.FromArgb(r, g, b);
             }
-            byte InfoLength = binaryReader.ReadByte(); // BMF files can have a comment. Read the length of the comment and skip it.
-            binaryReader.BaseStream.Position += InfoLength;
+            byte infoLength = binaryReader.ReadByte(); // BMF files can have a comment. Read the length of the comment and skip it.
+            binaryReader.BaseStream.Position += infoLength;
             CharacterCount = binaryReader.ReadUInt16();
-            HeaderSize = binaryReader.BaseStream.Position;
         }
 
         private byte VgaToRgb(byte compressed)
@@ -143,31 +142,36 @@ namespace ZFontConverter
         {
             for (int i = 0; i < CharacterCount; i++)
             {
-                ByteMapFontCharacter curCharacter;
-                curCharacter.ASCIICharacter = binaryReader.ReadByte();
-                curCharacter.Width = binaryReader.ReadByte();
-                curCharacter.Height = binaryReader.ReadByte();
-                curCharacter.XOffset = binaryReader.ReadSByte();
-                curCharacter.YOffset = binaryReader.ReadSByte();
-                curCharacter.Shift = binaryReader.ReadByte();
-                int Size = curCharacter.Width * curCharacter.Height;
-                curCharacter.Data = binaryReader.ReadBytes(Size);
-
-                if (curCharacter.ASCIICharacter == 32) // Space
-                {
-                    SpaceWidth = curCharacter.Shift;
-                }
-                else if (curCharacter.ASCIICharacter == 78 && SpaceWidth == 0) // Capital N
-                {
-                    SpaceWidth = curCharacter.Shift;
-                }
-
-                if (Characters.ContainsKey(curCharacter.ASCIICharacter))
-                {
-                    Characters.Remove(curCharacter.ASCIICharacter);
-                }
-                Characters.Add(curCharacter.ASCIICharacter, curCharacter);
+                ReadCharacter();
             }
+        }
+
+        private ByteMapFontCharacter ReadCharacter()
+        {
+            ByteMapFontCharacter curCharacter;
+            curCharacter.ASCIICharacter = binaryReader.ReadByte();
+            curCharacter.Width = binaryReader.ReadByte();
+            curCharacter.Height = binaryReader.ReadByte();
+            curCharacter.XOffset = binaryReader.ReadSByte();
+            curCharacter.YOffset = binaryReader.ReadSByte();
+            curCharacter.Shift = binaryReader.ReadByte();
+            int Size = curCharacter.Width * curCharacter.Height;
+            curCharacter.Data = binaryReader.ReadBytes(Size);
+
+            if (curCharacter.ASCIICharacter == 32) // Space
+            {
+                SpaceWidth = curCharacter.Shift;
+            }
+            else if (curCharacter.ASCIICharacter == 78 && SpaceWidth == 0) // Capital N
+            {
+                SpaceWidth = curCharacter.Shift;
+            }
+            if (Characters.ContainsKey(curCharacter.ASCIICharacter))
+            {
+                Characters.Remove(curCharacter.ASCIICharacter);
+            }
+            Characters.Add(curCharacter.ASCIICharacter, curCharacter);
+            return curCharacter;
         }
 
         private Color GetColor(byte palIndex)
@@ -233,7 +237,7 @@ namespace ZFontConverter
 
         public override void Export(string fontCharDir, ApplyOffsetsCallback ApplyOffsets)
         {
-            foreach(ByteMapFontCharacter character in this)
+            foreach(ByteMapFontCharacter character in Characters.Values)
             {
                 if (character.Width == 0 || character.Height == 0)
                 {
@@ -255,53 +259,6 @@ namespace ZFontConverter
                 ApplyOffsets(charFilename, Palette, 0, character.YOffset);
             }
             base.Export(fontCharDir, ApplyOffsets);
-        }
-/*
-        private class ByteMapFontEnumerator : IEnumerator<ByteMapFontCharacter>
-        {
-            private IEnumerator<KeyValuePair<byte, ByteMapFontCharacter>> DictEnumerator;
-
-            public ByteMapFontEnumerator(IEnumerator<KeyValuePair<byte, ByteMapFontCharacter>> enumerator)
-            {
-                DictEnumerator = enumerator;
-            }
-
-            object IEnumerator.Current {
-                get
-                {
-                    KeyValuePair<byte, ByteMapFontCharacter> pair = DictEnumerator.Current;
-                    return pair.Value;
-                }
-            }
-
-            ByteMapFontCharacter IEnumerator<ByteMapFontCharacter>.Current
-            {
-                get
-                {
-                    KeyValuePair<byte, ByteMapFontCharacter> pair = DictEnumerator.Current;
-                    return pair.Value;
-                }
-            }
-
-            void IDisposable.Dispose()
-            {
-                DictEnumerator.Dispose();
-            }
-
-            bool IEnumerator.MoveNext()
-            {
-                return DictEnumerator.MoveNext();
-            }
-
-            void IEnumerator.Reset()
-            {
-                DictEnumerator.Reset();
-            }
-        }
-*/
-        public IEnumerator GetEnumerator()
-        {
-            return Characters.Values.GetEnumerator();
         }
     }
 }
