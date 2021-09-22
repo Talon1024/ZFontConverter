@@ -50,10 +50,10 @@ namespace ZFontConverter
             Monospace = binaryReader.ReadBoolean();
             CharWidths = new ushort[NumFontChars];
             binaryReader.ReadByte(); // Shading type
-            int PaletteSize = binaryReader.ReadByte() + 1;
-            Palette = new Color[PaletteSize];
-            int Flags = binaryReader.ReadByte();
-            if ((Flags & 1) == 1)
+            int paletteSize = binaryReader.ReadByte() + 1;
+            Palette = new Color[paletteSize];
+            int flags = binaryReader.ReadByte();
+            if ((flags & 1) == 1)
             {
                 GlobalKerning = binaryReader.ReadInt16();
             }
@@ -61,6 +61,7 @@ namespace ZFontConverter
             {
                 GlobalKerning = 0;
             }
+            ushort monoWidth;
             if (!Monospace)
             {
                 for (int i = 0; i < NumFontChars; i++)
@@ -70,12 +71,14 @@ namespace ZFontConverter
             }
             else
             {
-                ushort MonoWidth = binaryReader.ReadUInt16();
+                monoWidth = binaryReader.ReadUInt16();
                 for (int i = 0; i < NumFontChars; i++)
                 {
-                    CharWidths[i] = MonoWidth;
+                    CharWidths[i] = monoWidth;
                 }
             }
+            monoWidth = CharWidths[0];
+            Monospace |= Array.TrueForAll(CharWidths, (ushort width) => width == monoWidth);
             if (FirstASCIIChar == 32) // Space
             {
                 SpaceWidth = CharWidths[0];
@@ -271,7 +274,7 @@ namespace ZFontConverter
             {
                 // Calculate sheet rows, columns, width, and height
                 int charRows = (int)Math.Floor(Math.Sqrt(NumFontChars));
-                int charCols = (int)Math.Ceiling((double)(NumFontChars / charRows));
+                int charCols = (int)Math.Ceiling((double)NumFontChars / charRows);
                 int charHeight = (int)FontHeight;
                 int sheetWidth = charCols * CharWidths[0]; // Widths are the same for all characters
                 int sheetHeight = charRows * (int)FontHeight;
