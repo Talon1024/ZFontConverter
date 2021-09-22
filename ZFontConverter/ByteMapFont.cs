@@ -42,26 +42,35 @@ namespace ZFontConverter
             Characters = new Dictionary<byte, ByteMapFontCharacter>(128);
         }
 
-        public override FontCharacterImage? GetBitmapFor(byte codePoint)
+        public override IEnumerable<FontCharacterImage> Images
         {
-            bool available = Characters.TryGetValue(codePoint, out ByteMapFontCharacter character);
-            if (available && character.Width > 0 && character.Height > 0)
+            get
             {
-                Bitmap bitmap = new Bitmap(character.Width, character.Height);
-                for (int i = 0; i < character.Data.Length; i++)
+                byte[] sortedCharacterIndices = new byte[Characters.Values.Count];
+                Characters.Keys.CopyTo(sortedCharacterIndices, 0);
+                Array.Sort(sortedCharacterIndices);
+                foreach (byte charKey in sortedCharacterIndices)
                 {
-                    int Column = i % character.Width;
-                    int Row = i / character.Width;
-                    bitmap.SetPixel(Column, Row, GetColor(character.Data[i]));
+                    ByteMapFontCharacter character = Characters[charKey];
+                    if (character.Width > 0 && character.Height > 0)
+                    {
+                        Bitmap bitmap = new Bitmap(character.Width, character.Height);
+                        for (int i = 0; i < character.Data.Length; i++)
+                        {
+                            int Column = i % character.Width;
+                            int Row = i / character.Width;
+                            bitmap.SetPixel(Column, Row, GetColor(character.Data[i]));
+                        }
+                        yield return new FontCharacterImage
+                        {
+                            Bitmap = bitmap,
+                            XOffset = character.XOffset,
+                            YOffset = character.YOffset,
+                            XShift = character.Shift
+                        };
+                    }
                 }
-                return new FontCharacterImage {
-                    bitmap = bitmap,
-                    xOffset = character.XOffset,
-                    yOffset = character.YOffset,
-                    xShift = character.Shift
-                };
             }
-            return null;
         }
 
         public override bool IsFormat()
@@ -203,10 +212,10 @@ namespace ZFontConverter
                 bitmap.UnlockBits(data);
                 return new FontCharacterImage
                 {
-                    bitmap = bitmap,
-                    xOffset = character.XOffset,
-                    yOffset = character.YOffset,
-                    xShift = character.Shift
+                    Bitmap = bitmap,
+                    XOffset = character.XOffset,
+                    YOffset = character.YOffset,
+                    XShift = character.Shift
                 };
             }
             return null;

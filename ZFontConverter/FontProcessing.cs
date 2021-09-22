@@ -59,23 +59,18 @@ namespace ZFontConverter
             if (!font.Ready) return;
             int curXPos = 0;
             int curYPos = 0;
-            for (byte bc = 0; bc < 255; bc++)
+            foreach (var charImage in font.Images)
             {
-                FontCharacterImage? CharImg = font.GetBitmapFor(bc);
-                if (CharImg.HasValue)
+                int moveX = charImage.XShift ?? charImage.Bitmap.Width;
+                int nextXPos = curXPos + moveX + font.GlobalKerning;
+                if (nextXPos > rect.Width)
                 {
-                    Bitmap bitmap = CharImg.Value.bitmap;
-                    int MoveX = CharImg.Value.xShift ?? bitmap.Width;
-                    int nextXPos = curXPos + MoveX + font.GlobalKerning;
-                    if (nextXPos > rect.Width)
-                    {
-                        curYPos += (int)font.FontHeight;
-                        curXPos = 0;
-                        nextXPos = MoveX + font.GlobalKerning;
-                    }
-                    graphics.DrawImageUnscaled(bitmap, curXPos, curYPos + CharImg.Value.yOffset);
-                    curXPos = nextXPos;
+                    curYPos += (int)font.FontHeight;
+                    curXPos = 0;
+                    nextXPos = moveX + font.GlobalKerning;
                 }
+                graphics.DrawImageUnscaled(charImage.Bitmap, curXPos, curYPos + charImage.YOffset);
+                curXPos = nextXPos;
             }
         }
 
@@ -110,50 +105,9 @@ namespace ZFontConverter
                 outDir = Path.GetDirectoryName(fontFName);
             }
             string fontName = Path.GetFileNameWithoutExtension(fontFName);
-            string fontCharDir = String.Format("{0}{2}fonts{2}{1}{2}", outDir, fontName, Path.DirectorySeparatorChar);
+            string fontCharDir = string.Format("{0}{2}fonts{2}{1}{2}", outDir, fontName, Path.DirectorySeparatorChar);
             Directory.CreateDirectory(fontCharDir);
             font.Export(fontCharDir, ApplyOffsets);
-/*
-            byte validChars = 0;
-            for (byte bc = 0; bc < 255; bc++)
-            {
-                byte[] isoChars = { bc };
-                string ucString = codePage.GetString(isoChars);
-                ushort codePoint = ucString[0];
-                FontCharacterImage? charImage = font.GetPalettedBitmapFor(bc);
-                if (charImage.HasValue)
-                {
-                    Directory.CreateDirectory(FontCharDir);
-                    string fname = String.Format("{1}{2}{0:X4}.png", codePoint, FontCharDir, Path.DirectorySeparatorChar);
-                    charImage.Value.bitmap.Save(fname);
-                    // Replace palette and transparency info in PNG
-                    PNGFile png = new PNGFile();
-                    using(FileStream pngFileStream = File.Open(fname, FileMode.Open, FileAccess.ReadWrite))
-                    {
-                        png.Open(pngFileStream);
-                    }
-                    png.ReplacePalette(font.GetPalette(), 0);
-                    // Set offsets if necessary
-                    if (charImage.Value.xOffset != 0 || charImage.Value.yOffset != 0)
-                    {
-                        png.InsertGrabChunk(-charImage.Value.xOffset, -charImage.Value.yOffset);
-                    }
-                    using (FileStream pngFileStream = File.Open(fname, FileMode.Create, FileAccess.Write))
-                    {
-                        png.Write(pngFileStream);
-                    }
-                    validChars += 1;
-                }
-            }
-            if (validChars > 0)
-            {
-                FileStream infoFileStream = File.Open($"{FontCharDir}{Path.DirectorySeparatorChar}font.inf", FileMode.Create, FileAccess.ReadWrite);
-                StreamWriter sw = new StreamWriter(infoFileStream);
-                sw.Write(font.GetFontInfo());
-                sw.Flush();
-                infoFileStream.Close();
-            }
-            */
         }
     }
 }

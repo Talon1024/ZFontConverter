@@ -1,6 +1,7 @@
 ﻿using System.Drawing;
 using System.Text;
 using System.IO;
+using System.Collections.Generic;
 
 namespace ZFontConverter
 {
@@ -14,7 +15,7 @@ namespace ZFontConverter
         public bool Ready { get; protected set; }
         public abstract bool IsFormat();
         public abstract void Read();
-        public abstract FontCharacterImage? GetBitmapFor(byte codePoint); // Preview
+        public abstract IEnumerable<FontCharacterImage> Images { get; } // Preview
         public abstract Color[] GetPalette(); // Font Palette
         public virtual void Export(string fontCharDir, ApplyOffsetsCallback ApplyOffsets)
         {

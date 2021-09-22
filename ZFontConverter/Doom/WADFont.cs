@@ -16,19 +16,12 @@ namespace ZFontConverter.Doom
         public DoomWAD FontWad;
         public DoomWAD PaletteWad;
 
+        public override IEnumerable<FontCharacterImage> Images => throw new NotImplementedException();
+
         public WADFont(DoomWAD FontWad, DoomWAD PaletteWad = null)
         {
             this.FontWad = FontWad;
             this.PaletteWad = PaletteWad;
-        }
-
-        public override FontCharacterImage? GetBitmapFor(byte character)
-        {
-            if (CharacterLumps.TryGetValue(character, out DoomWADLump charPic))
-            {
-
-            }
-            return null;
         }
 
         public override bool IsFormat()

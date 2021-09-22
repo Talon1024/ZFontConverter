@@ -1,27 +1,33 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 namespace ZFontConverter
 {
-    public struct FontCharacterImage
+    public struct FontCharacterImage : IDisposable
     {
-        public Bitmap bitmap;
-        public int xOffset;
-        public int yOffset;
-        public int? xShift;
+        public Bitmap Bitmap;
+        public int XOffset;
+        public int YOffset;
+        public int? XShift;
 
         public FontCharacterImage(Bitmap bmp)
         {
-            bitmap = bmp;
-            xOffset = 0;
-            yOffset = 0;
-            xShift = null;
+            Bitmap = bmp;
+            XOffset = 0;
+            YOffset = 0;
+            XShift = null;
         }
 
         public FontCharacterImage(Bitmap bmp, int xOffset, int yOffset, int? shift)
         {
-            bitmap = bmp;
-            this.xOffset = xOffset;
-            this.yOffset = yOffset;
-            xShift = shift ?? 0;
+            Bitmap = bmp;
+            XOffset = xOffset;
+            YOffset = yOffset;
+            XShift = shift ?? 0;
+        }
+
+        public void Dispose()
+        {
+            Bitmap.Dispose();
         }
     }
 }

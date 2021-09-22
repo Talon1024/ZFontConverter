@@ -68,10 +68,16 @@ namespace ZFontConverter
             binaryReader = new BinaryReader(fs);
         }
 
-        public override FontCharacterImage? GetBitmapFor(byte codePoint)
+        public override IEnumerable<FontCharacterImage> Images
         {
-            Bitmap bitmap = ConvertByteArray(Pixels[codePoint]);
-            return new FontCharacterImage(bitmap);
+            get
+            {
+                for (int charIndex = 0; charIndex < 256; charIndex++)
+                {
+                    Bitmap bitmap = ConvertByteArray(Pixels[charIndex]);
+                    yield return new FontCharacterImage(bitmap);
+                }
+            }
         }
 
         public override Color[] GetPalette()

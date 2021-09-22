@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.IO;
+using System.Collections.Generic;
 
 namespace ZFontConverter
 {
@@ -177,25 +178,26 @@ namespace ZFontConverter
             binaryReader.Close();
         }
 
-        public override FontCharacterImage? GetBitmapFor(byte codePoint)
+        public override IEnumerable<FontCharacterImage> Images
         {
-            int charIndex = codePoint - FirstASCIIChar;
-            if (charIndex < NumFontChars && charIndex >= 0 && CharWidths[charIndex] > 0)
+            get
             {
-                ushort Width = CharWidths[charIndex];
-                byte[] charData = AllCharData[charIndex]; // Palette references
-                Bitmap bitmap = new Bitmap((int)Width, (int)FontHeight);
-                for (int i = 0; i < charData.Length; i++)
+                for (int charIndex = 0; charIndex < NumFontChars; charIndex++)
                 {
-                    byte palIndex = charData[i];
-                    Color colour = GetColor(palIndex);
-                    int x = i % Width;
-                    int y = i / Width;
-                    bitmap.SetPixel(x, y, colour);
+                    ushort Width = CharWidths[charIndex];
+                    byte[] charData = AllCharData[charIndex]; // Palette references
+                    Bitmap bitmap = new Bitmap((int)Width, (int)FontHeight);
+                    for (int i = 0; i < charData.Length; i++)
+                    {
+                        byte palIndex = charData[i];
+                        Color colour = GetColor(palIndex);
+                        int x = i % Width;
+                        int y = i / Width;
+                        bitmap.SetPixel(x, y, colour);
+                    }
+                    yield return new FontCharacterImage(bitmap);
                 }
-                return new FontCharacterImage(bitmap);
             }
-            return null;
         }
 
         public override string GetFontInfo()
